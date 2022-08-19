@@ -1,75 +1,163 @@
 <script>
-  let todoItems = [];
-  let newItem = "";
+  import { onMount } from "svelte";
 
-  function addTodoItem() {
-    newItem = newItem.trim();
-    if (newItem.length == 0) {
+  const fieldSize = 10;
+  let gameover = false;
+  let minefield = [];
+
+  const revealMine = (mine) => {
+    if (gameover) return;
+
+    if (mine.isRevealed) return;
+
+    mine.isRevealed = true;
+
+    if (mine.isMine) {
+      gameover = true;
+      minefield = [...minefield];
       return;
     }
-
-    const todo = {
-      text: newItem,
-      checked: false,
-      id: Date.now(),
-    };
-
-    todoItems = [
-      ...todoItems,
-      {
-        text: newItem,
-        checked: false,
-        id: Date.now(),
-      },
-    ];
-    newItem = "";
-  }
-
-  function toggleItemDone(id) {
-    todoItems = todoItems.map((item) => {
-      if (item.id === id) {
-        item.checked = !item.checked;
+    if (mine.mineNeighbors == 0) {
+      for (let i = -1; i <= 1; i++) {
+        for (let j = -1; j <= 1; j++) {
+          if (
+            mine.x + i >= 0 &&
+            mine.x + i < fieldSize &&
+            mine.y + j >= 0 &&
+            mine.y + j < fieldSize
+          ) {
+            revealMine(minefield[mine.x + i][mine.y + j]);
+          }
+        }
       }
-      return item;
-    });
-  }
+    }
+    minefield = [...minefield];
+  };
 
-  function deleteTodoItem(id) {
-    todoItems = todoItems.filter((item) => item.id !== Number(id));
-  }
+  const addMines = (field) => {
+    let mines = 0;
+    while (mines < (fieldSize * fieldSize) / 10) {
+      const x = Math.floor(Math.random() * fieldSize);
+      const y = Math.floor(Math.random() * fieldSize);
+      if (!field[x][y].isMine) {
+        field[x][y].isMine = true;
+        mines++;
+      }
+    }
+    return field;
+  };
+
+  const countMineNeighbors = (field) => {
+    for (let i = 0; i < fieldSize; i++) {
+      for (let j = 0; j < fieldSize; j++) {
+        if (field[i][j].isMine) {
+          for (let k = -1; k <= 1; k++) {
+            for (let l = -1; l <= 1; l++) {
+              if (
+                i + k >= 0 &&
+                i + k < fieldSize &&
+                j + l >= 0 &&
+                j + l < fieldSize
+              ) {
+                field[i + k][j + l].mineNeighbors++;
+              }
+            }
+          }
+        }
+      }
+    }
+    return field;
+  };
+
+  const setupField = (size) => {
+    gameover = false;
+    let field = [];
+    for (let i = 0; i < size; i++) {
+      field[i] = [];
+      for (let j = 0; j < size; j++) {
+        field[i][j] = {
+          x: i,
+          y: j,
+          isMine: false,
+          isRevealed: false,
+          mineNeighbors: 0,
+        };
+      }
+    }
+
+    field = addMines(field, size);
+    field = countMineNeighbors(field);
+    return field;
+  };
+
+  onMount(() => {
+    minefield = setupField(fieldSize);
+  });
 </script>
 
 <main>
   <div class="container">
-    <h1 class="title">todos</h1>
-    <ul class="todo-list">
-      {#each todoItems as todo (todo.id)}
-        <li class="todo-item {todo.checked? 'done': ''}">
-          <input
-            id={todo.id}
-            type="checkbox"
-            on:click={() => toggleItemDone(todo.id)}
-          />
-          <label for={todo.id} />
-          <span class="todo-text">{todo.text}</span>
+    <button
+      class="reset-button"
+      on:click={() => {
+        minefield = setupField(fieldSize);
+      }}>RESET</button
+    >
+    <!-- Display minefield as grid of buttons -->
+    {#each minefield as minerow}
+      <div class="row">
+        {#each minerow as mine}
           <button
-            class="delete-button"
-            on:click={() => deleteTodoItem(todo.id)}
+            class="field {mine.isRevealed ? 'open' : ''} {mine.isMine
+              ? 'mine'
+              : ''}"
+            on:click={() => revealMine(mine)}
           >
-            <svg class="icon"><use href="#delete-icon" /></svg>
+            {#if mine.isMine}
+              💣
+            {:else}
+              {mine.mineNeighbors ? mine.mineNeighbors : ""}
+            {/if}
           </button>
-        </li>
-      {/each}
-    </ul>
-    <form on:submit|preventDefault={addTodoItem}>
-      <input
-        class="todo-input"
-        type="text"
-        aria-label="Enter a new todo item"
-        placeholder="E.g. Build a web app"
-        bind:value={newItem}
-      />
-      <button class="add-button" type="submit">Add</button>
-    </form>
+        {/each}
+      </div>
+    {/each}
   </div>
 </main>
+
+<style>
+  main {
+    display: grid;
+    grid-template-rows: repeat(10, 1fr);
+  }
+
+  .row {
+    display: flex;
+  }
+
+  .field {
+    background-color: lightgray;
+    width: 4rem;
+    height: 4rem;
+    margin: 0px;
+    font-size: 0px;
+  }
+
+  .field.open {
+    pointer-events: none;
+    background-color: #fff;
+    font-size: 1.5rem;
+  }
+
+  .field.mine.open {
+    background-color: #f00;
+  }
+
+  .reset-button {
+    background-color: #fff;
+    border: 1px solid #000;
+    border-radius: 5px;
+    padding: 0.5rem;
+    margin: 0.5rem;
+  }
+</style>
