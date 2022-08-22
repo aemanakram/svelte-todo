@@ -1,37 +1,35 @@
 <script>
   import { onMount } from "svelte";
+  import MineIcon from "./mine_icon.svelte";
 
   const fieldSize = 10;
+  const mineCount = 10;
+
   let gameover = false;
+  let win = false;
   let minefield = [];
 
-  const revealMine = (mine) => {
-    if (gameover) return;
+  const setupField = (size, mineCount) => {
+    gameover = false;
+    win = false;
 
-    if (mine.isRevealed) return;
-
-    mine.isRevealed = true;
-
-    if (mine.isMine) {
-      gameover = true;
-      minefield = [...minefield];
-      return;
-    }
-    if (mine.mineNeighbors == 0) {
-      for (let i = -1; i <= 1; i++) {
-        for (let j = -1; j <= 1; j++) {
-          if (
-            mine.x + i >= 0 &&
-            mine.x + i < fieldSize &&
-            mine.y + j >= 0 &&
-            mine.y + j < fieldSize
-          ) {
-            revealMine(minefield[mine.x + i][mine.y + j]);
-          }
-        }
+    let field = [];
+    for (let i = 0; i < size; i++) {
+      field[i] = [];
+      for (let j = 0; j < size; j++) {
+        field[i][j] = {
+          x: i,
+          y: j,
+          isMine: false,
+          isRevealed: false,
+          mineNeighbors: 0,
+        };
       }
     }
-    minefield = [...minefield];
+
+    field = addMines(field, mineCount);
+    field = countMineNeighbors(field);
+    return field;
   };
 
   const addMines = (field) => {
@@ -69,40 +67,87 @@
     return field;
   };
 
-  const setupField = (size) => {
-    gameover = false;
-    let field = [];
-    for (let i = 0; i < size; i++) {
-      field[i] = [];
-      for (let j = 0; j < size; j++) {
-        field[i][j] = {
-          x: i,
-          y: j,
-          isMine: false,
-          isRevealed: false,
-          mineNeighbors: 0,
-        };
+  const checkWin = () => {
+    let count = 0;
+    for (let i = 0; i < fieldSize; i++) {
+      for (let j = 0; j < fieldSize; j++) {
+        if (minefield[i][j].isRevealed) {
+          count++;
+        }
       }
     }
+    if (count == fieldSize * fieldSize - mineCount) {
+      return true;
+    }
+    return false;
+  };
 
-    field = addMines(field, size);
-    field = countMineNeighbors(field);
-    return field;
+  const revealMine = (mine) => {
+    if (gameover) return;
+    if (mine.isRevealed) return;
+
+    revealNeighbors(mine);
+
+    if (mine.isMine) {
+      gameover = true;
+      minefield = [...minefield];
+      return;
+    }
+
+    if (checkWin()) {
+      win = true;
+      gameover = true;
+    }
+    minefield = [...minefield];
+  };
+
+  const revealNeighbors = (mine) => {
+    if (mine.isRevealed) return;
+    mine.isRevealed = true;
+
+    if (mine.mineNeighbors == 0) {
+      for (let i = -1; i <= 1; i++) {
+        for (let j = -1; j <= 1; j++) {
+          if (
+            mine.x + i >= 0 &&
+            mine.x + i < fieldSize &&
+            mine.y + j >= 0 &&
+            mine.y + j < fieldSize
+          ) {
+            revealNeighbors(minefield[mine.x + i][mine.y + j]);
+          }
+        }
+      }
+    }
   };
 
   onMount(() => {
-    minefield = setupField(fieldSize);
+    minefield = setupField(fieldSize, mineCount);
   });
 </script>
 
 <main>
   <div class="container">
-    <button
-      class="reset-button"
-      on:click={() => {
-        minefield = setupField(fieldSize);
-      }}>RESET</button
-    >
+    <div class="status-bar">
+      <button
+        class="reset-button"
+        on:click={() => {
+          minefield = setupField(fieldSize, mineCount);
+        }}>RESET</button
+      >
+      <div class="status">
+        {#if gameover}
+          {#if win}
+            You win!
+          {:else}
+            You lose!
+          {/if}
+        {:else}
+          Minesweeper
+        {/if}
+      </div>
+    </div>
+
     <!-- Display minefield as grid of buttons -->
     {#each minefield as minerow}
       <div class="row">
@@ -113,8 +158,8 @@
               : ''}"
             on:click={() => revealMine(mine)}
           >
-            {#if mine.isMine}
-              💣
+            {#if mine.isRevealed && mine.isMine}
+              <MineIcon />
             {:else}
               {mine.mineNeighbors ? mine.mineNeighbors : ""}
             {/if}
@@ -127,12 +172,31 @@
 
 <style>
   main {
-    display: grid;
-    grid-template-rows: repeat(10, 1fr);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .status {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    color: white;
   }
 
   .row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    height: fit-content;
   }
 
   .field {
@@ -140,24 +204,36 @@
     width: 4rem;
     height: 4rem;
     margin: 0px;
-    font-size: 0px;
+    border-color: white;
+    font-size: 0;
   }
 
   .field.open {
     pointer-events: none;
+    border-color: white;
     background-color: #fff;
     font-size: 1.5rem;
   }
 
   .field.mine.open {
-    background-color: #f00;
+    pointer-events: none;
+    border-color: white;
+    background-color: red;
+    font-size: 0;
   }
 
   .reset-button {
     background-color: #fff;
-    border: 1px solid #000;
     border-radius: 5px;
     padding: 0.5rem;
     margin: 0.5rem;
+  }
+
+  .reset-button:hover {
+    background-color: #eee;
+  }
+
+  .reset-button:active {
+    background-color: #ddd;
   }
 </style>

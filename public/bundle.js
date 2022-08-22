@@ -34,6 +34,12 @@ var app = (function () {
     function detach(node) {
         node.parentNode.removeChild(node);
     }
+    function destroy_each(iterations, detaching) {
+        for (let i = 0; i < iterations.length; i += 1) {
+            if (iterations[i])
+                iterations[i].d(detaching);
+        }
+    }
     function element(name) {
         return document.createElement(name);
     }
@@ -46,16 +52,12 @@ var app = (function () {
     function space() {
         return text(' ');
     }
+    function empty() {
+        return text('');
+    }
     function listen(node, event, handler, options) {
         node.addEventListener(event, handler, options);
         return () => node.removeEventListener(event, handler, options);
-    }
-    function prevent_default(fn) {
-        return function (event) {
-            event.preventDefault();
-            // @ts-ignore
-            return fn.call(this, event);
-        };
     }
     function attr(node, attribute, value) {
         if (value == null)
@@ -71,10 +73,21 @@ var app = (function () {
         if (text.data !== data)
             text.data = data;
     }
+    function set_style(node, key, value) {
+        node.style.setProperty(key, value);
+    }
 
     let current_component;
     function set_current_component(component) {
         current_component = component;
+    }
+    function get_current_component() {
+        if (!current_component)
+            throw new Error(`Function called outside component initialization`);
+        return current_component;
+    }
+    function onMount(fn) {
+        get_current_component().$$.on_mount.push(fn);
     }
 
     const dirty_components = [];
@@ -132,91 +145,38 @@ var app = (function () {
         }
     }
     const outroing = new Set();
+    let outros;
+    function group_outros() {
+        outros = {
+            remaining: 0,
+            callbacks: []
+        };
+    }
+    function check_outros() {
+        if (!outros.remaining) {
+            run_all(outros.callbacks);
+        }
+    }
     function transition_in(block, local) {
         if (block && block.i) {
             outroing.delete(block);
             block.i(local);
         }
     }
-
-    function destroy_block(block, lookup) {
-        block.d(1);
-        lookup.delete(block.key);
-    }
-    function update_keyed_each(old_blocks, changed, get_key, dynamic, ctx, list, lookup, node, destroy, create_each_block, next, get_context) {
-        let o = old_blocks.length;
-        let n = list.length;
-        let i = o;
-        const old_indexes = {};
-        while (i--)
-            old_indexes[old_blocks[i].key] = i;
-        const new_blocks = [];
-        const new_lookup = new Map();
-        const deltas = new Map();
-        i = n;
-        while (i--) {
-            const child_ctx = get_context(ctx, list, i);
-            const key = get_key(child_ctx);
-            let block = lookup.get(key);
-            if (!block) {
-                block = create_each_block(key, child_ctx);
-                block.c();
-            }
-            else if (dynamic) {
-                block.p(changed, child_ctx);
-            }
-            new_lookup.set(key, new_blocks[i] = block);
-            if (key in old_indexes)
-                deltas.set(key, Math.abs(i - old_indexes[key]));
+    function transition_out(block, local, callback) {
+        if (block && block.o) {
+            if (outroing.has(block))
+                return;
+            outroing.add(block);
+            outros.callbacks.push(() => {
+                outroing.delete(block);
+                if (callback) {
+                    block.d(1);
+                    callback();
+                }
+            });
+            block.o(local);
         }
-        const will_move = new Set();
-        const did_move = new Set();
-        function insert(block) {
-            transition_in(block, 1);
-            block.m(node, next);
-            lookup.set(block.key, block);
-            next = block.first;
-            n--;
-        }
-        while (o && n) {
-            const new_block = new_blocks[n - 1];
-            const old_block = old_blocks[o - 1];
-            const new_key = new_block.key;
-            const old_key = old_block.key;
-            if (new_block === old_block) {
-                // do nothing
-                next = new_block.first;
-                o--;
-                n--;
-            }
-            else if (!new_lookup.has(old_key)) {
-                // remove old block
-                destroy(old_block, lookup);
-                o--;
-            }
-            else if (!lookup.has(new_key) || will_move.has(new_key)) {
-                insert(new_block);
-            }
-            else if (did_move.has(old_key)) {
-                o--;
-            }
-            else if (deltas.get(new_key) > deltas.get(old_key)) {
-                did_move.add(new_key);
-                insert(new_block);
-            }
-            else {
-                will_move.add(old_key);
-                o--;
-            }
-        }
-        while (o--) {
-            const old_block = old_blocks[o];
-            if (!new_lookup.has(old_block.key))
-                destroy(old_block, lookup);
-        }
-        while (n)
-            insert(new_blocks[n - 1]);
-        return new_blocks;
     }
     function mount_component(component, target, anchor) {
         const { fragment, on_mount, on_destroy, after_update } = component.$$;
@@ -340,165 +300,481 @@ var app = (function () {
         }
     }
 
-    /* src/App.svelte generated by Svelte v3.6.5 */
+    /* src\mine_icon.svelte generated by Svelte v3.6.5 */
 
-    const file = "src/App.svelte";
+    const file = "src\\mine_icon.svelte";
 
-    function get_each_context(ctx, list, i) {
+    function create_fragment(ctx) {
+    	var svg, path;
+
+    	return {
+    		c: function create() {
+    			svg = svg_element("svg");
+    			path = svg_element("path");
+    			set_style(path, "line-height", "normal");
+    			set_style(path, "text-indent", "0");
+    			set_style(path, "text-align", "start");
+    			set_style(path, "text-decoration-line", "none");
+    			set_style(path, "text-decoration-style", "solid");
+    			set_style(path, "text-decoration-color", "#000");
+    			set_style(path, "text-transform", "none");
+    			set_style(path, "block-progression", "tb");
+    			set_style(path, "isolation", "auto");
+    			set_style(path, "mix-blend-mode", "normal");
+    			attr(path, "d", "M 24.984375 1.9863281 A 1.0001 1.0001 0 0 0 24 3 L 24 7.0488281 C 19.788099 7.2817221 15.969452 8.9603227 13.021484 11.607422 L 10.150391 8.7363281 A 1.0001 1.0001 0 0 0 9.4335938 8.4335938 A 1.0001 1.0001 0 0 0 8.7363281 10.150391 L 11.603516 13.017578 C 8.9676792 15.970574 7.2834883 19.792069 7.0507812 24 L 3 24 A 1.0001 1.0001 0 1 0 3 26 L 7.0507812 26 C 7.2834883 30.207931 8.9676792 34.029426 11.603516 36.982422 L 8.7363281 39.849609 A 1.0001 1.0001 0 1 0 10.150391 41.263672 L 13.021484 38.392578 C 15.969452 41.039677 19.788099 42.718278 24 42.951172 L 24 47 A 1.0001 1.0001 0 1 0 26 47 L 26 42.951172 C 30.211901 42.718278 34.030548 41.039677 36.978516 38.392578 L 39.849609 41.263672 A 1.0001 1.0001 0 1 0 41.263672 39.849609 L 38.396484 36.982422 C 41.032321 34.029426 42.716512 30.207931 42.949219 26 L 47 26 A 1.0001 1.0001 0 1 0 47 24 L 42.949219 24 C 42.716512 19.792069 41.032321 15.970574 38.396484 13.017578 L 41.263672 10.150391 A 1.0001 1.0001 0 0 0 40.537109 8.4335938 A 1.0001 1.0001 0 0 0 39.849609 8.7363281 L 36.978516 11.607422 C 34.030548 8.9603227 30.211901 7.2817221 26 7.0488281 L 26 3 A 1.0001 1.0001 0 0 0 24.984375 1.9863281 z M 20.5 15 C 23.538 15 26 17.462 26 20.5 C 26 23.538 23.538 26 20.5 26 C 17.462 26 15 23.538 15 20.5 C 15 17.462 17.462 15 20.5 15 z");
+    			add_location(path, file, 1, 4, 65);
+    			attr(svg, "xmlns", "http://www.w3.org/2000/svg");
+    			attr(svg, "viewBox", "0 0 50 50");
+    			add_location(svg, file, 0, 0, 0);
+    		},
+
+    		l: function claim(nodes) {
+    			throw new Error("options.hydrate only works if the component was compiled with the `hydratable: true` option");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, svg, anchor);
+    			append(svg, path);
+    		},
+
+    		p: noop,
+    		i: noop,
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(svg);
+    			}
+    		}
+    	};
+    }
+
+    class Mine_icon extends SvelteComponentDev {
+    	constructor(options) {
+    		super(options);
+    		init(this, options, null, create_fragment, safe_not_equal, []);
+    	}
+    }
+
+    /* src\App.svelte generated by Svelte v3.6.5 */
+
+    const file$1 = "src\\App.svelte";
+
+    function get_each_context_1(ctx, list, i) {
     	const child_ctx = Object.create(ctx);
-    	child_ctx.todo = list[i];
+    	child_ctx.mine = list[i];
     	return child_ctx;
     }
 
-    // (46:6) {#each todoItems as todo (todo.id)}
-    function create_each_block(key_1, ctx) {
-    	var li, input, input_id_value, t0, label, label_for_value, t1, span, t2_value = ctx.todo.text, t2, t3, button, svg, use, t4, li_class_value, dispose;
+    function get_each_context(ctx, list, i) {
+    	const child_ctx = Object.create(ctx);
+    	child_ctx.minerow = list[i];
+    	return child_ctx;
+    }
 
-    	function click_handler() {
-    		return ctx.click_handler(ctx);
+    // (145:8) {:else}
+    function create_else_block_2(ctx) {
+    	var t;
+
+    	return {
+    		c: function create() {
+    			t = text("Minesweeper");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		p: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    // (139:8) {#if gameover}
+    function create_if_block_1(ctx) {
+    	var if_block_anchor;
+
+    	function select_block_type_1(ctx) {
+    		if (ctx.win) return create_if_block_2;
+    		return create_else_block_1;
     	}
+
+    	var current_block_type = select_block_type_1(ctx);
+    	var if_block = current_block_type(ctx);
+
+    	return {
+    		c: function create() {
+    			if_block.c();
+    			if_block_anchor = empty();
+    		},
+
+    		m: function mount(target, anchor) {
+    			if_block.m(target, anchor);
+    			insert(target, if_block_anchor, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (current_block_type !== (current_block_type = select_block_type_1(ctx))) {
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(if_block_anchor.parentNode, if_block_anchor);
+    				}
+    			}
+    		},
+
+    		d: function destroy(detaching) {
+    			if_block.d(detaching);
+
+    			if (detaching) {
+    				detach(if_block_anchor);
+    			}
+    		}
+    	};
+    }
+
+    // (142:10) {:else}
+    function create_else_block_1(ctx) {
+    	var t;
+
+    	return {
+    		c: function create() {
+    			t = text("You lose!");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    // (140:10) {#if win}
+    function create_if_block_2(ctx) {
+    	var t;
+
+    	return {
+    		c: function create() {
+    			t = text("You win!");
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    // (163:12) {:else}
+    function create_else_block(ctx) {
+    	var t_value = ctx.mine.mineNeighbors ? ctx.mine.mineNeighbors : "", t;
+
+    	return {
+    		c: function create() {
+    			t = text(t_value);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, t, anchor);
+    		},
+
+    		p: function update(changed, ctx) {
+    			if ((changed.minefield) && t_value !== (t_value = ctx.mine.mineNeighbors ? ctx.mine.mineNeighbors : "")) {
+    				set_data(t, t_value);
+    			}
+    		},
+
+    		i: noop,
+    		o: noop,
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(t);
+    			}
+    		}
+    	};
+    }
+
+    // (161:12) {#if mine.isRevealed && mine.isMine}
+    function create_if_block(ctx) {
+    	var current;
+
+    	var mineicon = new Mine_icon({ $$inline: true });
+
+    	return {
+    		c: function create() {
+    			mineicon.$$.fragment.c();
+    		},
+
+    		m: function mount(target, anchor) {
+    			mount_component(mineicon, target, anchor);
+    			current = true;
+    		},
+
+    		p: noop,
+
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(mineicon.$$.fragment, local);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			transition_out(mineicon.$$.fragment, local);
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			destroy_component(mineicon, detaching);
+    		}
+    	};
+    }
+
+    // (154:8) {#each minerow as mine}
+    function create_each_block_1(ctx) {
+    	var button, current_block_type_index, if_block, button_class_value, current, dispose;
+
+    	var if_block_creators = [
+    		create_if_block,
+    		create_else_block
+    	];
+
+    	var if_blocks = [];
+
+    	function select_block_type_2(ctx) {
+    		if (ctx.mine.isRevealed && ctx.mine.isMine) return 0;
+    		return 1;
+    	}
+
+    	current_block_type_index = select_block_type_2(ctx);
+    	if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
 
     	function click_handler_1() {
     		return ctx.click_handler_1(ctx);
     	}
 
     	return {
-    		key: key_1,
-
-    		first: null,
-
     		c: function create() {
-    			li = element("li");
-    			input = element("input");
-    			t0 = space();
-    			label = element("label");
-    			t1 = space();
-    			span = element("span");
-    			t2 = text(t2_value);
-    			t3 = space();
     			button = element("button");
-    			svg = svg_element("svg");
-    			use = svg_element("use");
-    			t4 = space();
-    			attr(input, "id", input_id_value = ctx.todo.id);
-    			attr(input, "type", "checkbox");
-    			add_location(input, file, 47, 10, 907);
-    			attr(label, "for", label_for_value = ctx.todo.id);
-    			add_location(label, file, 52, 10, 1043);
-    			attr(span, "class", "todo-text");
-    			add_location(span, file, 53, 10, 1077);
-    			attr(use, "href", "#delete-icon");
-    			add_location(use, file, 58, 30, 1267);
-    			attr(svg, "class", "icon");
-    			add_location(svg, file, 58, 12, 1249);
-    			attr(button, "class", "delete-button");
-    			add_location(button, file, 54, 10, 1130);
-    			attr(li, "class", li_class_value = "todo-item " + (ctx.todo.checked? 'done': ''));
-    			add_location(li, file, 46, 8, 847);
-
-    			dispose = [
-    				listen(input, "click", click_handler),
-    				listen(button, "click", click_handler_1)
-    			];
-
-    			this.first = li;
+    			if_block.c();
+    			attr(button, "class", button_class_value = "field " + (ctx.mine.isRevealed ? 'open' : '') + " " + (ctx.mine.isMine
+                  ? 'mine'
+                  : '') + " svelte-9p8hch");
+    			add_location(button, file$1, 154, 10, 3532);
+    			dispose = listen(button, "click", click_handler_1);
     		},
 
     		m: function mount(target, anchor) {
-    			insert(target, li, anchor);
-    			append(li, input);
-    			append(li, t0);
-    			append(li, label);
-    			append(li, t1);
-    			append(li, span);
-    			append(span, t2);
-    			append(li, t3);
-    			append(li, button);
-    			append(button, svg);
-    			append(svg, use);
-    			append(li, t4);
+    			insert(target, button, anchor);
+    			if_blocks[current_block_type_index].m(button, null);
+    			current = true;
     		},
 
     		p: function update(changed, new_ctx) {
     			ctx = new_ctx;
-    			if ((changed.todoItems) && input_id_value !== (input_id_value = ctx.todo.id)) {
-    				attr(input, "id", input_id_value);
+    			var previous_block_index = current_block_type_index;
+    			current_block_type_index = select_block_type_2(ctx);
+    			if (current_block_type_index === previous_block_index) {
+    				if_blocks[current_block_type_index].p(changed, ctx);
+    			} else {
+    				group_outros();
+    				transition_out(if_blocks[previous_block_index], 1, () => {
+    					if_blocks[previous_block_index] = null;
+    				});
+    				check_outros();
+
+    				if_block = if_blocks[current_block_type_index];
+    				if (!if_block) {
+    					if_block = if_blocks[current_block_type_index] = if_block_creators[current_block_type_index](ctx);
+    					if_block.c();
+    				}
+    				transition_in(if_block, 1);
+    				if_block.m(button, null);
     			}
 
-    			if ((changed.todoItems) && label_for_value !== (label_for_value = ctx.todo.id)) {
-    				attr(label, "for", label_for_value);
+    			if ((!current || changed.minefield) && button_class_value !== (button_class_value = "field " + (ctx.mine.isRevealed ? 'open' : '') + " " + (ctx.mine.isMine
+                  ? 'mine'
+                  : '') + " svelte-9p8hch")) {
+    				attr(button, "class", button_class_value);
     			}
+    		},
 
-    			if ((changed.todoItems) && t2_value !== (t2_value = ctx.todo.text)) {
-    				set_data(t2, t2_value);
-    			}
+    		i: function intro(local) {
+    			if (current) return;
+    			transition_in(if_block);
+    			current = true;
+    		},
 
-    			if ((changed.todoItems) && li_class_value !== (li_class_value = "todo-item " + (ctx.todo.checked? 'done': ''))) {
-    				attr(li, "class", li_class_value);
-    			}
+    		o: function outro(local) {
+    			transition_out(if_block);
+    			current = false;
     		},
 
     		d: function destroy(detaching) {
     			if (detaching) {
-    				detach(li);
+    				detach(button);
     			}
 
-    			run_all(dispose);
+    			if_blocks[current_block_type_index].d();
+    			dispose();
     		}
     	};
     }
 
-    function create_fragment(ctx) {
-    	var main, div, h1, t1, ul, each_blocks = [], each_1_lookup = new Map(), t2, form, input, t3, button, dispose;
+    // (152:4) {#each minefield as minerow}
+    function create_each_block(ctx) {
+    	var div, t, current;
 
-    	var each_value = ctx.todoItems;
+    	var each_value_1 = ctx.minerow;
 
-    	const get_key = ctx => ctx.todo.id;
+    	var each_blocks = [];
+
+    	for (var i = 0; i < each_value_1.length; i += 1) {
+    		each_blocks[i] = create_each_block_1(get_each_context_1(ctx, each_value_1, i));
+    	}
+
+    	const out = i => transition_out(each_blocks[i], 1, () => {
+    		each_blocks[i] = null;
+    	});
+
+    	return {
+    		c: function create() {
+    			div = element("div");
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+
+    			t = space();
+    			attr(div, "class", "row svelte-9p8hch");
+    			add_location(div, file$1, 152, 6, 3470);
+    		},
+
+    		m: function mount(target, anchor) {
+    			insert(target, div, anchor);
+
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div, null);
+    			}
+
+    			append(div, t);
+    			current = true;
+    		},
+
+    		p: function update(changed, ctx) {
+    			if (changed.minefield) {
+    				each_value_1 = ctx.minerow;
+
+    				for (var i = 0; i < each_value_1.length; i += 1) {
+    					const child_ctx = get_each_context_1(ctx, each_value_1, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(changed, child_ctx);
+    						transition_in(each_blocks[i], 1);
+    					} else {
+    						each_blocks[i] = create_each_block_1(child_ctx);
+    						each_blocks[i].c();
+    						transition_in(each_blocks[i], 1);
+    						each_blocks[i].m(div, t);
+    					}
+    				}
+
+    				group_outros();
+    				for (i = each_value_1.length; i < each_blocks.length; i += 1) out(i);
+    				check_outros();
+    			}
+    		},
+
+    		i: function intro(local) {
+    			if (current) return;
+    			for (var i = 0; i < each_value_1.length; i += 1) transition_in(each_blocks[i]);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			each_blocks = each_blocks.filter(Boolean);
+    			for (let i = 0; i < each_blocks.length; i += 1) transition_out(each_blocks[i]);
+
+    			current = false;
+    		},
+
+    		d: function destroy(detaching) {
+    			if (detaching) {
+    				detach(div);
+    			}
+
+    			destroy_each(each_blocks, detaching);
+    		}
+    	};
+    }
+
+    function create_fragment$1(ctx) {
+    	var main, div2, div1, button, t1, div0, t2, current, dispose;
+
+    	function select_block_type(ctx) {
+    		if (ctx.gameover) return create_if_block_1;
+    		return create_else_block_2;
+    	}
+
+    	var current_block_type = select_block_type(ctx);
+    	var if_block = current_block_type(ctx);
+
+    	var each_value = ctx.minefield;
+
+    	var each_blocks = [];
 
     	for (var i = 0; i < each_value.length; i += 1) {
-    		let child_ctx = get_each_context(ctx, each_value, i);
-    		let key = get_key(child_ctx);
-    		each_1_lookup.set(key, each_blocks[i] = create_each_block(key, child_ctx));
+    		each_blocks[i] = create_each_block(get_each_context(ctx, each_value, i));
     	}
+
+    	const out = i => transition_out(each_blocks[i], 1, () => {
+    		each_blocks[i] = null;
+    	});
 
     	return {
     		c: function create() {
     			main = element("main");
-    			div = element("div");
-    			h1 = element("h1");
-    			h1.textContent = "todos";
-    			t1 = space();
-    			ul = element("ul");
-
-    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].c();
-
-    			t2 = space();
-    			form = element("form");
-    			input = element("input");
-    			t3 = space();
+    			div2 = element("div");
+    			div1 = element("div");
     			button = element("button");
-    			button.textContent = "Add";
-    			attr(h1, "class", "title");
-    			add_location(h1, file, 43, 4, 741);
-    			attr(ul, "class", "todo-list");
-    			add_location(ul, file, 44, 4, 774);
-    			attr(input, "class", "todo-input");
-    			attr(input, "type", "text");
-    			attr(input, "aria-label", "Enter a new todo item");
-    			attr(input, "placeholder", "E.g. Build a web app");
-    			add_location(input, file, 64, 6, 1415);
-    			attr(button, "class", "add-button");
-    			attr(button, "type", "submit");
-    			add_location(button, file, 71, 6, 1599);
-    			add_location(form, file, 63, 4, 1363);
-    			attr(div, "class", "container");
-    			add_location(div, file, 42, 2, 713);
-    			add_location(main, file, 41, 0, 704);
+    			button.textContent = "RESET";
+    			t1 = space();
+    			div0 = element("div");
+    			if_block.c();
+    			t2 = space();
 
-    			dispose = [
-    				listen(input, "input", ctx.input_input_handler),
-    				listen(form, "submit", prevent_default(ctx.addTodoItem))
-    			];
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].c();
+    			}
+    			attr(button, "class", "reset-button svelte-9p8hch");
+    			add_location(button, file$1, 131, 6, 2984);
+    			attr(div0, "class", "status svelte-9p8hch");
+    			add_location(div0, file$1, 137, 6, 3148);
+    			attr(div1, "class", "status-bar svelte-9p8hch");
+    			add_location(div1, file$1, 130, 4, 2952);
+    			attr(div2, "class", "container");
+    			add_location(div2, file$1, 129, 2, 2923);
+    			attr(main, "class", "svelte-9p8hch");
+    			add_location(main, file$1, 128, 0, 2913);
+    			dispose = listen(button, "click", ctx.click_handler);
     		},
 
     		l: function claim(nodes) {
@@ -507,108 +783,234 @@ var app = (function () {
 
     		m: function mount(target, anchor) {
     			insert(target, main, anchor);
-    			append(main, div);
-    			append(div, h1);
-    			append(div, t1);
-    			append(div, ul);
+    			append(main, div2);
+    			append(div2, div1);
+    			append(div1, button);
+    			append(div1, t1);
+    			append(div1, div0);
+    			if_block.m(div0, null);
+    			append(div2, t2);
 
-    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].m(ul, null);
+    			for (var i = 0; i < each_blocks.length; i += 1) {
+    				each_blocks[i].m(div2, null);
+    			}
 
-    			append(div, t2);
-    			append(div, form);
-    			append(form, input);
-
-    			input.value = ctx.newItem;
-
-    			append(form, t3);
-    			append(form, button);
+    			current = true;
     		},
 
     		p: function update(changed, ctx) {
-    			const each_value = ctx.todoItems;
-    			each_blocks = update_keyed_each(each_blocks, changed, get_key, 1, ctx, each_value, each_1_lookup, ul, destroy_block, create_each_block, null, get_each_context);
+    			if (current_block_type === (current_block_type = select_block_type(ctx)) && if_block) {
+    				if_block.p(changed, ctx);
+    			} else {
+    				if_block.d(1);
+    				if_block = current_block_type(ctx);
+    				if (if_block) {
+    					if_block.c();
+    					if_block.m(div0, null);
+    				}
+    			}
 
-    			if (changed.newItem && (input.value !== ctx.newItem)) input.value = ctx.newItem;
+    			if (changed.minefield) {
+    				each_value = ctx.minefield;
+
+    				for (var i = 0; i < each_value.length; i += 1) {
+    					const child_ctx = get_each_context(ctx, each_value, i);
+
+    					if (each_blocks[i]) {
+    						each_blocks[i].p(changed, child_ctx);
+    						transition_in(each_blocks[i], 1);
+    					} else {
+    						each_blocks[i] = create_each_block(child_ctx);
+    						each_blocks[i].c();
+    						transition_in(each_blocks[i], 1);
+    						each_blocks[i].m(div2, null);
+    					}
+    				}
+
+    				group_outros();
+    				for (i = each_value.length; i < each_blocks.length; i += 1) out(i);
+    				check_outros();
+    			}
     		},
 
-    		i: noop,
-    		o: noop,
+    		i: function intro(local) {
+    			if (current) return;
+    			for (var i = 0; i < each_value.length; i += 1) transition_in(each_blocks[i]);
+
+    			current = true;
+    		},
+
+    		o: function outro(local) {
+    			each_blocks = each_blocks.filter(Boolean);
+    			for (let i = 0; i < each_blocks.length; i += 1) transition_out(each_blocks[i]);
+
+    			current = false;
+    		},
 
     		d: function destroy(detaching) {
     			if (detaching) {
     				detach(main);
     			}
 
-    			for (i = 0; i < each_blocks.length; i += 1) each_blocks[i].d();
+    			if_block.d();
 
-    			run_all(dispose);
+    			destroy_each(each_blocks, detaching);
+
+    			dispose();
     		}
     	};
     }
 
-    function instance($$self, $$props, $$invalidate) {
-    	let todoItems = [];
-      let newItem = "";
+    const fieldSize = 10;
 
-      function addTodoItem() {
-        $$invalidate('newItem', newItem = newItem.trim());
-        if (newItem.length == 0) {
+    const mineCount = 10;
+
+    function instance($$self, $$props, $$invalidate) {
+    	
+
+      let gameover = false;
+      let win = false;
+      let minefield = [];
+
+      const setupField = (size, mineCount) => {
+        $$invalidate('gameover', gameover = false);
+        $$invalidate('win', win = false);
+
+        let field = [];
+        for (let i = 0; i < size; i++) {
+          field[i] = [];
+          for (let j = 0; j < size; j++) {
+            field[i][j] = {
+              x: i,
+              y: j,
+              isMine: false,
+              isRevealed: false,
+              mineNeighbors: 0,
+            };
+          }
+        }
+
+        field = addMines(field);
+        field = countMineNeighbors(field);
+        return field;
+      };
+
+      const addMines = (field) => {
+        let mines = 0;
+        while (mines < (fieldSize * fieldSize) / 10) {
+          const x = Math.floor(Math.random() * fieldSize);
+          const y = Math.floor(Math.random() * fieldSize);
+          if (!field[x][y].isMine) {
+            field[x][y].isMine = true;
+            mines++;
+          }
+        }
+        return field;
+      };
+
+      const countMineNeighbors = (field) => {
+        for (let i = 0; i < fieldSize; i++) {
+          for (let j = 0; j < fieldSize; j++) {
+            if (field[i][j].isMine) {
+              for (let k = -1; k <= 1; k++) {
+                for (let l = -1; l <= 1; l++) {
+                  if (
+                    i + k >= 0 &&
+                    i + k < fieldSize &&
+                    j + l >= 0 &&
+                    j + l < fieldSize
+                  ) {
+                    field[i + k][j + l].mineNeighbors++;
+                  }
+                }
+              }
+            }
+          }
+        }
+        return field;
+      };
+
+      const checkWin = () => {
+        let count = 0;
+        for (let i = 0; i < fieldSize; i++) {
+          for (let j = 0; j < fieldSize; j++) {
+            if (minefield[i][j].isRevealed) {
+              count++;
+            }
+          }
+        }
+        if (count == fieldSize * fieldSize - mineCount) {
+          return true;
+        }
+        return false;
+      };
+
+      const revealMine = (mine) => {
+        if (gameover) return;
+        if (mine.isRevealed) return;
+
+        revealNeighbors(mine);
+
+        if (mine.isMine) {
+          $$invalidate('gameover', gameover = true);
+          $$invalidate('minefield', minefield = [...minefield]);
           return;
         }
 
-        $$invalidate('todoItems', todoItems = [
-          ...todoItems,
-          {
-            text: newItem,
-            checked: false,
-            id: Date.now(),
-          },
-        ]);
-        $$invalidate('newItem', newItem = "");
-      }
+        if (checkWin()) {
+          $$invalidate('win', win = true);
+          $$invalidate('gameover', gameover = true);
+        }
+        $$invalidate('minefield', minefield = [...minefield]);
+      };
 
-      function toggleItemDone(id) {
-        $$invalidate('todoItems', todoItems = todoItems.map((item) => {
-          if (item.id === id) {
-            item.checked = !item.checked;
+      const revealNeighbors = (mine) => {
+        if (mine.isRevealed) return;
+        mine.isRevealed = true;
+
+        if (mine.mineNeighbors == 0) {
+          for (let i = -1; i <= 1; i++) {
+            for (let j = -1; j <= 1; j++) {
+              if (
+                mine.x + i >= 0 &&
+                mine.x + i < fieldSize &&
+                mine.y + j >= 0 &&
+                mine.y + j < fieldSize
+              ) {
+                revealNeighbors(minefield[mine.x + i][mine.y + j]);
+              }
+            }
           }
-          return item;
-        }));
-      }
+        }
+      };
 
-      function deleteTodoItem(id) {
-        $$invalidate('todoItems', todoItems = todoItems.filter((item) => item.id !== Number(id)));
-      }
+      onMount(() => {
+        $$invalidate('minefield', minefield = setupField(fieldSize));
+      });
 
-    	function click_handler({ todo }) {
-    		return toggleItemDone(todo.id);
-    	}
+    	function click_handler() {
+    	          minefield = setupField(fieldSize); $$invalidate('minefield', minefield);
+    	        }
 
-    	function click_handler_1({ todo }) {
-    		return deleteTodoItem(todo.id);
-    	}
-
-    	function input_input_handler() {
-    		newItem = this.value;
-    		$$invalidate('newItem', newItem);
+    	function click_handler_1({ mine }) {
+    		return revealMine(mine);
     	}
 
     	return {
-    		todoItems,
-    		newItem,
-    		addTodoItem,
-    		toggleItemDone,
-    		deleteTodoItem,
+    		gameover,
+    		win,
+    		minefield,
+    		setupField,
+    		revealMine,
     		click_handler,
-    		click_handler_1,
-    		input_input_handler
+    		click_handler_1
     	};
     }
 
     class App extends SvelteComponentDev {
     	constructor(options) {
     		super(options);
-    		init(this, options, instance, create_fragment, safe_not_equal, []);
+    		init(this, options, instance, create_fragment$1, safe_not_equal, []);
     	}
     }
 
